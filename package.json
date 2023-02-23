@@ -63,7 +63,7 @@
           "subscribePrefix": "$namespace/"
         }
       },
-      "uaa": {
+      "auth": {
         "kind": "xsuaa",
         "vcap": {
           "label": "xsuaa"

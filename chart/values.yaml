@@ -6,12 +6,12 @@ global:
   imagePullSecret: {}
 srv:
   bindings:
-    uaa:
-      serviceInstanceName: xsuaa
     db:
-      fromSecret: <RELEASE_NAME>-caphana
-    destinations:
-      serviceInstanceName: destinations
+      serviceInstanceName: hana
+    auth:
+      serviceInstanceName: xsuaa
+    destination:
+      serviceInstanceName: destination
     messaging:
       serviceInstanceName: event-mesh
   image:
@@ -27,7 +27,7 @@ srv:
       cpu: 1000m
       ephemeral-storage: 1G
       memory: 1000M
-  health_check:
+  health:
     liveness:
       path: /
     readiness:
@@ -49,21 +49,21 @@ srv:
                 - key: token_service_url
                   path: url
           - configMap:
-              name: <RELEASE_NAME>-connectivity-proxy-info
+              name: "{{ .Release.Name }}-connectivity-proxy-info"
               optional: false
 xsuaa:
   serviceOfferingName: xsuaa
   servicePlanName: application
   parameters:
     xsappname: kyma-cap-s4ems
-  config: xs-security.json
-hana_deployer:
+    tenant-mode: dedicated
+hana-deployer:
   image:
     repository: <DOCKER_ACCOUNT>/kyma-cap-s4ems-db
     tag: latest
   bindings:
     hana:
-      fromSecret: <RELEASE_NAME>-caphana
+      serviceInstanceName: hana
   resources:
     limits:
       cpu: 2000m
@@ -71,21 +71,24 @@ hana_deployer:
     requests:
       cpu: 1000m
       memory: 1G
-destinations:
+hana:
+  serviceOfferingName: hana
+  servicePlanName: hdi-shared
+destination:
   serviceOfferingName: destination
   servicePlanName: lite
   parameters:
     version: 1.0.0
     HTML5Runtime_enabled: true
-event_mesh:
+event-mesh:
   serviceOfferingName: enterprise-messaging
   servicePlanName: default
-  config: event-mesh.json
-html5_apps_deployer:
-  cloudService: com.bp.businesspartners
-  backendDestinations: 
-    srv-binding: 
-      service: srv
+html5-apps-deployer:
+  env:
+    SAP_CLOUD_SERVICE: com.bp.businesspartners
+  envFrom:
+    - configMapRef:
+        name: "{{ .Release.Name }}-html5-apps-deployer-configmap"
   image:
     repository: <DOCKER_ACCOUNT>/kyma-cap-s4ems-html5-deployer
     tag: latest
@@ -93,8 +96,8 @@ html5_apps_deployer:
     xsuaa:
       serviceInstanceName: xsuaa
     destination:
-      serviceInstanceName: destinations
-    html5_apps_repo:
+      serviceInstanceName: destination
+    html5-apps-repo:
       serviceInstanceName: html5-apps-repo-host
   resources:
     limits:
@@ -103,9 +106,12 @@ html5_apps_deployer:
     requests:
       cpu: 1000m
       memory: 1G
-html5_apps_repo_host:
+html5-apps-repo-host:
   serviceOfferingName: html5-apps-repo
   servicePlanName: app-host
+backendDestinations:
+  srv-binding:
+    service: srv
 
 gitusername: <base64_encodeduser>
 gitpassword: <base_64_encoded_GIT_secret>
